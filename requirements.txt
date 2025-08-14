@@ -6,3 +6,4 @@ pycoingecko
 numpy
 matplotlib
 plotly
+streamlit-autorefresh
