@@ -1,92 +1,90 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": 1,
-   "id": "888c6308-9d63-4c62-8804-97a871a39b40",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stderr",
-     "output_type": "stream",
-     "text": [
-      "2025-08-14 08:03:13.442 \n",
-      "  \u001b[33m\u001b[1mWarning:\u001b[0m to view this Streamlit app on a browser, run it with the following\n",
-      "  command:\n",
-      "\n",
-      "    streamlit run C:\\Users\\Caleb\\anaconda3\\Lib\\site-packages\\ipykernel_launcher.py [ARGUMENTS]\n"
-     ]
-    }
-   ],
-   "source": [
-    "# streamlit_app.py\n",
-    "import streamlit as st\n",
-    "from pycoingecko import CoinGeckoAPI\n",
-    "import pandas as pd\n",
-    "from streamlit_autorefresh import st_autorefresh\n",
-    "\n",
-    "# Auto-refresh every 10 seconds\n",
-    "st_autorefresh(interval=10000, key=\"crypto_refresh\")\n",
-    "\n",
-    "# Initialize CoinGecko API\n",
-    "cg = CoinGeckoAPI()\n",
-    "\n",
-    "st.title(\"Real-Time Crypto Spread Dashboard\")\n",
-    "\n",
-    "# List of popular crypto IDs from CoinGecko\n",
-    "crypto_options = ['bitcoin', 'ethereum', 'ripple', 'litecoin', 'cardano', 'dogecoin']\n",
-    "selected_cryptos = st.multiselect(\"Select Cryptocurrencies\", crypto_options, default=['bitcoin','ethereum'])\n",
-    "\n",
-    "if not selected_cryptos:\n",
-    "    st.warning(\"Please select at least one cryptocurrency.\")\n",
-    "    st.stop()\n",
-    "\n",
-    "# Fetch real-time data\n",
-    "try:\n",
-    "    data = cg.get_price(ids=selected_cryptos, vs_currencies='usd', include_24hr_change='true', include_market_cap='true')\n",
-    "    # Convert to DataFrame\n",
-    "    df = pd.DataFrame(data).T.reset_index()\n",
-    "    df.columns = ['Crypto', 'Price (USD)', '24h Change (%)', 'Market Cap (USD)']\n",
-    "    st.dataframe(df)\n",
-    "except Exception as e:\n",
-    "    st.error(f\"Error fetching data: {e}\")\n",
-    "\n",
-    "# Optional: display spread between highest and lowest price among selected cryptos\n",
-    "if len(selected_cryptos) > 1:\n",
-    "    max_price = df['Price (USD)'].max()\n",
-    "    min_price = df['Price (USD)'].min()\n",
-    "    spread = max_price - min_price\n",
-    "    st.metric(\"Price Spread\", f\"${spread:,.2f}\")\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "1f48e92b-9817-49fc-abb8-2a0f0ac4087f",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python [conda env:base] *",
-   "language": "python",
-   "name": "conda-base-py"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.12.7"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+import streamlit as st
+from pycoingecko import CoinGeckoAPI
+import pandas as pd
+from streamlit_autorefresh import st_autorefresh
+
+# --- Page Configuration ---
+st.set_page_config(
+    page_title="Crypto Spread Dashboard",
+    page_icon="💸",
+    layout="wide"
+)
+
+# --- Auto-Refresh ---
+# Auto-refresh the page every 30 seconds to fetch the latest data.
+st_autorefresh(interval=30000, key="crypto_data_refresh")
+
+# --- API Initialization ---
+cg = CoinGeckoAPI()
+
+# --- Main Application ---
+st.title("📈 Real-Time Crypto Dashboard")
+st.caption("Data is refreshed automatically every 30 seconds.")
+
+# List of popular crypto IDs from CoinGecko for the selection dropdown.
+# You can find more IDs on the CoinGecko API documentation.
+crypto_options = [
+    'bitcoin', 'ethereum', 'ripple', 'litecoin', 'cardano', 
+    'solana', 'dogecoin', 'polkadot', 'chainlink', 'tether'
+]
+
+# --- Sidebar for Selections ---
+st.sidebar.header("Select Cryptocurrencies")
+selected_cryptos = st.sidebar.multiselect(
+    "Choose cryptocurrencies to display:", 
+    crypto_options, 
+    default=['bitcoin', 'ethereum', 'solana']
+)
+
+if not selected_cryptos:
+    st.warning("Please select at least one cryptocurrency from the sidebar.")
+    st.stop()
+
+# --- Data Fetching and Display ---
+try:
+    # Fetch real-time data using the CoinGecko API
+    # 'usd' is the currency, but you can change it to 'eur', 'gbp', etc.
+    price_data = cg.get_price(
+        ids=selected_cryptos, 
+        vs_currencies='usd', 
+        include_market_cap='true', 
+        include_24hr_vol='true', 
+        include_24hr_change='true'
+    )
+    
+    # --- Data Processing with Pandas ---
+    # Convert the dictionary from the API into a Pandas DataFrame
+    df = pd.DataFrame(price_data).T
+    df = df.reset_index()
+    
+    # Rename columns for clarity
+    df.columns = [
+        'Crypto', 'Price (USD)', 'Market Cap (USD)', 
+        '24h Volume (USD)', '24h Change (%)'
+    ]
+    
+    # Format the numeric columns for better readability
+    df['Price (USD)'] = df['Price (USD)'].map('${:,.2f}'.format)
+    df['Market Cap (USD)'] = df['Market Cap (USD)'].map('${:,.0f}'.format)
+    df['24h Volume (USD)'] = df['24h Volume (USD)'].map('${:,.0f}'.format)
+    df['24h Change (%)'] = df['24h Change (%)'].map('{:.2f}%'.format)
+
+    # --- Display Data Table ---
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+    # --- Display Metrics and Spread ---
+    if len(selected_cryptos) > 1:
+        # Re-fetch raw prices for calculation without formatting
+        raw_prices = [price_data[crypto]['usd'] for crypto in selected_cryptos]
+        max_price = max(raw_prices)
+        min_price = min(raw_prices)
+        spread = max_price - min_price
+        
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Highest Price", f"${max_price:,.2f}")
+        col2.metric("Lowest Price", f"${min_price:,.2f}")
+        col3.metric("Price Spread", f"${spread:,.2f}")
+
+except Exception as e:
+    st.error(f"An error occurred while fetching data from the CoinGecko API: {e}")
+    st.info("The API might be temporarily unavailable or the selected cryptocurrency ID is incorrect.")
